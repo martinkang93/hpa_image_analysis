@@ -1,0 +1,79 @@
+# Symlink data directory mountpoint in docker to a local data directory 
+#
+# this allows me to save data in different directories on each machine, and 
+# then make symlinks to emulate the root filesystem used in docker images.
+# 
+# execute with: `$ make -f Makefile-fs-symlink RECIPE
+
+################################################################################
+####								 Variables 								####
+################################################################################
+# where the code and data are on the local machine
+DIR_CODE_LOCAL=/mnt/repo/nfer/path
+DIR_DATA_LOCAL=/mnt/data/nfer  
+
+# where the docker container mounts these volumes
+# this needs to match the docker run volume mounting
+# e.g.: `$ docker run -it ... -v $(DATA):/data -v $(HDD):/data/hdd ...` 
+# \/ canNOT have an appended "/" or else the symlink conditional fails [ -L {DIR_DATA_DOCKER} ]
+DIR_CODE_DOCKER=/src/workspace
+DIR_DATA_DOCKER=/data/hdd
+################################################################################
+
+# Derived variable  
+DIRNAME_DATA_DOCKER=$(dir ${DIR_DATA_DOCKER})
+DIRNAME_CODE_DOCKER=$(dir ${DIR_CODE_DOCKER})
+
+################################################################################
+####								 Recipes								####
+################################################################################
+all: help
+
+help:
+	@cat Makefile-fs-symlink
+
+
+# COMPOSE build recipes
+build: link-data link-code
+
+link-data:
+	@echo "Symlinking Docker data dir to local data dir: ${DIR_DATA_DOCKER} -> ${DIR_DATA_LOCAL}"
+	sudo mkdir -p ${DIRNAME_DATA_DOCKER}	
+	sudo ln -s -T ${DIR_DATA_LOCAL} ${DIR_DATA_DOCKER}
+
+link-code:
+	@echo "Symlinking Docker data dir to local data dir: ${DIR_DATA_DOCKER} -> ${DIR_DATA_LOCAL}"
+	sudo mkdir -p ${DIRNAME_CODE_DOCKER}
+	sudo ln -s -T ${DIR_CODE_LOCAL} ${DIR_CODE_DOCKER}
+
+
+# SWITCH show recipes
+show: show-snapshot
+
+show-snapshot:
+	@echo "Show contents at local dir data sym-mount (e.g., to verify expected fs contents found)"
+	if [ -L ${DIR_DATA_DOCKER} ]; then \
+		ls -lt ${DIRNAME_DATA_DOCKER}; fi
+	@echo "Show contents at local dir code sym-mount (e.g., to verify expected fs contents found"
+	if [ -L ${DIR_CODE_DOCKER} ]; then \
+		ls -lt ${DIRNAME_CODE_DOCKER}; fi
+
+show-live:
+	@echo Watch root directory contents
+	watch --color --exec --no-title ls --color=tty -lt /
+
+
+# COMPOSE clean recipes
+clean: clean-data clean-code
+
+clean-data:
+	@echo "Removing data symlinks from local machine"
+	if [ -L ${DIR_DATA_DOCKER} ]; then sudo unlink ${DIR_DATA_DOCKER}; fi
+	# remove DIRNAME_DATA_DOCKER i.f.f no other contents are inside DIRNAME_DATA_DOCKER
+	if [ -d ${DIRNAME_DATA_DOCKER} ]; then sudo rmdir ${DIRNAME_DATA_DOCKER}; fi
+	
+clean-code:
+	@echo "Removing code symlinks from local machine"
+	if [ -L ${DIR_CODE_DOCKER} ]; then sudo unlink ${DIR_CODE_DOCKER}; fi
+	# remove DIRNAME_CODE_DOCKER i.f.f no other contents are inside DIRNAME_CODE_DOCKER
+	if [ -d ${DIRNAME_CODE_DOCKER} ]; then sudo rmdir ${DIRNAME_CODE_DOCKER}; fi
