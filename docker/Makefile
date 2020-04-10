@@ -9,7 +9,9 @@ SRC?=$(shell dirname `pwd`)
 # CONFIG
 GPU?=0
 DOCKER_FILE=Dockerfile
-DOCKER=GPU=$(GPU) nvidia-docker
+#! no longer need nvidia-docker with docker version 19.03+
+#DOCKER=GPU=$(GPU) nvidia-docker
+DOCKER=docker
 BACKEND=tensorflow
 PYTHON_VERSION?=3.6
 CUDA_VERSION?=9.0
